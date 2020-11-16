@@ -46,19 +46,11 @@ class inputtableinfo(tableinfo.tableinfo):
     def alias(self):
         return self.__alias
 
-    # Added useCoprocessor at end to get if coprocessor
-    def setPropertiesFromDef(self, inputdef, useCoprocessor):
+    def setPropertiesFromDef(self, inputdef):
         tablealias = inputdef.get('name', '')
         tmpAlias = tablealias
         tmpAlias = '' if 'Dimension' == tablealias else tablealias
-        # Test Add new alias if has alternateNames
-        # print('Testing alternateNames')
         alternateNames = inputdef.get('alternateNames', [])
-        # print(alternateNames)
-        # print(alternateNames[0])
-        # print(alternateNames[0].encode("utf-8"))
-        # if alternate tables
-        # if 
         tmpAlias = '' if 'input' == tablealias else tablealias
         tmpAlias = alternateNames[0].encode("utf-8") if alternateNames != [] else tmpAlias
         

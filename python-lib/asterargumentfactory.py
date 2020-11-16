@@ -15,50 +15,38 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
-
-from integerargument import *
 from booleanargument import *
-from ListArgument import *
+from doubleargument import *
+from integerargument import *
+from listargument import *
 from sqlexprargument import *
-from columnnamesargument import *
 from tableargument import *
 
 class AsterArgumentFactory(object):
     '''
-    Creates specific aster argument object based on data type
+    Creates specific Aster argument objects depending on the data type of the argument as is specified in the JSON file.
     '''
-
-
+    
+    @staticmethod
     def createArg(argument, argumentDef, inputTables):
-        # print(argument.get('name'))
-        # print('This is a list/tuple')
-        if 'BOOLEAN' == argumentDef.get('datatype',''):
-            # print('is Boolean')
+        dtype = argument.get('datatype', '').upper()
+        allowsLists = argument.get('allowsLists', False)
+        name = argument.get('name', '')
+        if dtype == "BOOLEAN":
             return BooleanArgument(argument, argumentDef)
-        elif 'SQLEXPR' == argumentDef.get('datatype', '').upper():
+        elif dtype == "SQLEXPR":
             return SqlExprArgument(argument, argumentDef)
-            # print('is SQLEXPR')
-        elif ('INTEGER' == argumentDef.get('datatype', '').upper() or\
-              'LONG' == argumentDef.get('datatype', '')) and\
-        not argumentDef.get('allowsLists', False):
-            # print('INTEGER')
+        elif dtype in ["INTEGER", "LONG"] and not allowsLists:
             return IntegerArgument(argument, argumentDef)
-        # elif 'TABLE_NAME' == argumentDef['datatype'] and not \
-        elif 'TABLE_NAME' == argumentDef.get('datatype', '') and not \
-        argumentDef.get('allowsLists', False) \
-        and not argumentDef.get('isOutputTable', False):
-            # print('TABLE_NAME')
-            return TableArgument(argument, argumentDef, inputTables)        
+        elif dtype in ["DOUBLE", "DOUBLE PRECISION"] and not allowsLists:
+            return DoubleArgument(argument, argumentDef)
+        elif dtype == "TABLE_NAME" and not allowsLists and not argumentDef.get('isOutputTable', False):
+            return TableArgument(argument, argumentDef, inputTables)
         elif isinstance(argument.get('value',''), (list, tuple)):     
-            # print('is List/tuple')      
-            #This works to fix an issue with the empty inputs for the list. I have no idea why. As long as this code filters the input to ListArgument, no errors should occur for empty inputs.            
             argument['value'] = filter(None, argument.get('value'))
-            # print(argument.get('value'))
             return ListArgument(argument, argumentDef)
+        # TODO: Better handling of nPath or other clauses like this. 
+        elif name == "Symbols" or name == "Result" or name == "Mode": 
+            return SqlExprArgument(argument, argumentDef)
         else:
-            # print('is Others')
             return AsterArgument(argument, argumentDef)
-    createArg = staticmethod(createArg)
-    # elif 'COLUMN_NAMES' == argumentDef.get('datatype', '').upper() and\
-        #     argumentDef.get('allowsLists', False):
-        #     return ColumnNamesArgument(argument, argumentDef)

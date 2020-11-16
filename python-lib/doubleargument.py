@@ -17,23 +17,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 from asterargument import *
 
-class IntegerArgument(AsterArgument):
-    '''
-    Argument that is an Integer.
-    '''
-
-
+class DoubleArgument(AsterArgument):
+    """
+    Arguments that are datatype DOUBLE or DOUBLE PRECISION. Has no quotation marks in queries.
+    """
     def __init__(self, argument, argumentDef):
-        super(IntegerArgument, self).__init__(argument, argumentDef)
+        super(DoubleArgument, self).__init__(argument, argumentDef)
         
-    def __int_try(self, value):
+    def _float_try(self, value):
         try:
-            return "{}".format(float(value)).split('.')[0]
-        except ValueError:
-            return '0'
+            return float(value)
         except BaseException:
-            return '0'
-    
+            return 0
+        
     @property
     def value(self):
-        return "'{}'".format(self.__int_try(self._argument.get('value','')))
+        return self._float_try(self._argument.get('value', ''))

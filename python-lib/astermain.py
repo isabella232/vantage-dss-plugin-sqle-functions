@@ -18,7 +18,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 import dataiku
 from dataiku.customrecipe import *
 from dataiku import Dataset
-from sets import Set
 import pandas as pd, numpy as np
 from dataiku import pandasutils as pdu
 # Import the class that allows us to execute SQL on the Studio connections
@@ -28,6 +27,11 @@ from querybuilderfacade import *
 from inputtableinfo import *
 from outputtableinfo import *
 from outputtableinfo import *
+
+try:
+    from sets import Set # Support for Python 2.7 and below.
+except ImportError:
+    Set = set # Support for Python 3 and above.
 
 # def getConnectionDetails(inputDataset):
 #     return getConnectionParamsFromDataset(input_A_datasets[0]);
@@ -195,6 +199,8 @@ def asterDo():
         print(stTxn)
         executor.query_to_df(stTxn)
 
+    
+    
     # Detect error
     try:
         selectResult = executor.query_to_df(query)

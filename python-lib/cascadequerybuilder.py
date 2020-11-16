@@ -16,9 +16,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 '''
 
 try:
-    from sets import Set
+    from sets import Set # Support for Python 2.7 and below.
 except ImportError:
-    Set = set
+    Set = set # Support for Python 3 and above.
+    
 import asterqueryutility as queryutility
 
 def getFunctionName(config, func):
@@ -47,7 +48,7 @@ def getSelectQuery(dss_function, inputTables, config):
                 if not corderByNode['isSetByUser']:
                     corderBy = "ORDER BY {}".format(corderByNode['key'])
             carguments = ""
-            jsonFunction = queryutility.getJson(fun.get('name',''), dss_function.get('useCoprocessor',''))
+            jsonFunction = queryutility.getJson(fun.get('name',''))
             if 'arguments_clauses' in fun:
                 cargumentslist = [n for n in dss_function['arguments'] if n.get('name',"").upper() in fun['arguments_clauses']]
                 carguments += queryutility.getJoinedArgumentsString(cargumentslist,
@@ -56,13 +57,8 @@ def getSelectQuery(dss_function, inputTables, config):
                 carguments += queryutility.getJoinedArgumentsString(fun['arguments_nonuserdefined'],
                                                                     queryutility.getArgumentClausesFromJson(jsonFunction))      
             cfunction = fun.get('name',"")
-            if dss_function['useCoprocessor']:
-                coprocessorString = "@coprocessor"
-            else:
-                coprocessorString = ""            
             # TODO: SELECT CLAUSE and additional clauses
-            cquery = """SELECT * FROM {cfunction} {coprocessorString} (ON {inputInfo} {cpartitionBy} {corderBy} USING {carguments})""".format(cfunction=getFunctionName(config, cfunction),
-                                                                      coprocessorString=coprocessorString,
+            cquery = """SELECT * FROM {cfunction} (ON {inputInfo} {cpartitionBy} {corderBy} USING {carguments})""".format(cfunction=getFunctionName(config, cfunction),
                                                                       inputInfo=inputInfo,
                                                                       cpartitionBy=cpartitionBy,
                                                                       corderBy=corderBy,

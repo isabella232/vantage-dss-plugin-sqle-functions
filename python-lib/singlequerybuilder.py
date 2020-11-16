@@ -42,10 +42,10 @@ def getOrderByClause(inputdef):
     orderByColumn = inputdef.get('orderByColumn', '') if\
     inputdef.get('isOrdered', False) else ''
     return orderByColumn and ("ORDER BY " + orderByColumn)
-#Added useCoprocessor
-def getAliasedInputONClause(input_, jsonfile, inputTables, useCoprocessor):
+
+def getAliasedInputONClause(input_, jsonfile, inputTables):
     table = getInputTableFromDatasets(input_.get('value', ''), inputTables)
-    table.setPropertiesFromDef(input_, useCoprocessor)
+    table.setPropertiesFromDef(input_)
     if table.orderKey == [] or table.orderKey == [""] or table.orderKey == '':           
         return ALIASED_ON_CLAUSE.format(input_table=table.tablename,
            input_name=table.alias and ('AS "' + table.alias + '"'),
@@ -58,12 +58,11 @@ def getAliasedInputONClause(input_, jsonfile, inputTables, useCoprocessor):
             orderKeys = table.orderKey and
                 " ".join(["ORDER BY", table.orderKey])).rstrip() + "\n" if table else ''
            
-# added useCoprocessor
 def getMultipleAliasedInputsClause(dss_function, jsonfile, inputTables):
     #print("getMultipleAliasedInputsClause")
     aliasedinputs = [x for x in dss_function.get('required_input', []) if
                      x.get('name', '') and x.get('value', '')]
-    return ''.join(map(lambda x: getAliasedInputONClause(x, jsonfile, inputTables, dss_function['useCoprocessor']), aliasedinputs))
+    return ''.join(map(lambda x: getAliasedInputONClause(x, jsonfile, inputTables), aliasedinputs))
 
 def getMultipleUnaliasedInputsClause(dss_function, inputTables):
     isQueryMode = dss_function.get('isQueryMode', False)
@@ -79,6 +78,7 @@ def getMultipleUnaliasedInputsClause(dss_function, inputTables):
 def getArgumentClauses(dss_function, jsonfile, inputTables):
     if dss_function.get('arguments', []) != []:
         #print('Has arguments')
+        print(dss_function.get('arguments'))
         return '\n' + queryutility.getJoinedArgumentsString(dss_function.get('arguments', []),
                                                  queryutility.getArgumentClausesFromJson(jsonfile),
                                                  inputTables)
@@ -101,14 +101,10 @@ def getOnClause(dss_function, jsonfile, inputTables):
             getMultipleAliasedInputsClause(dss_function, jsonfile, inputTables)).strip() or\
             ON_SELECT_ONE_PARTITION_BY_ONE
 
-def getFunctionName(config, dss_function, useCoprocessor):
+def getFunctionName(config, dss_function):
     aafschema = config.get('aafschema', '')
     functionname = dss_function.get('name', '')
-    if useCoprocessor:
-        coprocessorString = "@coprocessor"
-    else:
-        coprocessorString = ""
-    return (aafschema and (aafschema + '.')) + functionname + coprocessorString
+    return (aafschema and (aafschema + '.')) + functionname
 
 def getAdditionClauses(dss_function):
     if isinstance(dss_function.get('additionalSQLClause'), list):
@@ -117,9 +113,9 @@ def getAdditionClauses(dss_function):
         return ''
 
 def getSelectQuery(dss_function, inputTables, config):
-    jsonfile= queryutility.getJson(dss_function.get('name',''), dss_function.get('useCoprocessor',''))
-    outTableClauses = getOutClause(dss_function, jsonfile, inputTables)     
-    argumentClauses = getArgumentClauses(dss_function, jsonfile, inputTables)
+    json_file = queryutility.getJson(dss_function.get('name', ''))
+    outTableClauses = getOutClause(dss_function, json_file, inputTables)     
+    argumentClauses = getArgumentClauses(dss_function, json_file, inputTables)
     if(outTableClauses == '\n'):
         outTableClauses = ''
     if(argumentClauses == '\n'):
@@ -131,41 +127,41 @@ def getSelectQuery(dss_function, inputTables, config):
     if outTableClauses or argumentClauses:
         print('Running Output Table Clauses')
     
-    #TODO ADD USING CLAUSE SOMEWHERE    
-    # Update to:
-    # Following code might have issues with Reduce functions with multiple INPUT TABLES
-    useCoprocessor = dss_function.get('useCoprocessor','')
-    if dss_function.get('hasPartnerFunction', False):
-        jsonfilePartner= queryutility.getJson(dss_function.get('name',''), dss_function.get('useCoprocessor',''))        
-        outTableClausesPartner = getOutClause(dss_function['partnerFunction'], jsonfilePartner, inputTables)     
-        argumentClausesPartner = getArgumentClauses(dss_function['partnerFunction'], jsonfilePartner, inputTables)
-        if(outTableClausesPartner == '\n'):
-            outTableClausesPartner = ''
-        if(argumentClausesPartner == '\n'):
-            argumentClausesPartner = ''
-        completeClausePartner = 'USING ' + outTableClausesPartner + argumentClausesPartner
-        fullUsingClausePartner = (outTableClausesPartner or argumentClausesPartner) and completeClausePartner
+    # Removing partnerFunction functionality due to removal of coprocessor.
+    # #TODO ADD USING CLAUSE SOMEWHERE    
+    # # Update to:
+    # # Following code might have issues with Reduce functions with multiple INPUT TABLES
+    # if dss_function.get('hasPartnerFunction', False):
+    #     jsonfilePartner= queryutility.getJson(dss_function.get('name',''), dss_function.get('useCoprocessor',''))        
+    #     outTableClausesPartner = getOutClause(dss_function['partnerFunction'], jsonfilePartner, inputTables)     
+    #     argumentClausesPartner = getArgumentClauses(dss_function['partnerFunction'], jsonfilePartner, inputTables)
+    #     if(outTableClausesPartner == '\n'):
+    #         outTableClausesPartner = ''
+    #     if(argumentClausesPartner == '\n'):
+    #         argumentClausesPartner = ''
+    #     completeClausePartner = 'USING ' + outTableClausesPartner + argumentClausesPartner
+    #     fullUsingClausePartner = (outTableClausesPartner or argumentClausesPartner) and completeClausePartner
         
 
-        mapQuery = MAP_FUNCTION_QUERY.format(getFunctionName(config, dss_function, useCoprocessor),                       
-                       getOnClause(dss_function, jsonfile, inputTables),
-                       fullUsingClause)
-        return MR_SELECT_QUERY.format(dss_function.get('select_clause', '*'),
-                       getFunctionName(config, dss_function['partnerFunction'], useCoprocessor),                       
-                       mapQuery, 
-                       "",
-                       getPartitionByMap(dss_function['partnerFunction']['required_input'][0]), getOrderByMap(dss_function['partnerFunction']['required_input'][0]),
-                       fullUsingClausePartner,
-                       getAdditionClauses(dss_function['partnerFunction']))
-    else:
-        return SELECT_QUERY.format(dss_function.get('select_clause', '*'),
-                       getFunctionName(config, dss_function, useCoprocessor),                       
-                       getOnClause(dss_function, jsonfile, inputTables),
-                       fullUsingClause,
-                       getAdditionClauses(dss_function))
+    #     mapQuery = MAP_FUNCTION_QUERY.format(getFunctionName(config, dss_function, useCoprocessor),                       
+    #                    getOnClause(dss_function, jsonfile, inputTables),
+    #                    fullUsingClause)
+    #     return MR_SELECT_QUERY.format(dss_function.get('select_clause', '*'),
+    #                    getFunctionName(config, dss_function['partnerFunction'], useCoprocessor),                       
+    #                    mapQuery, 
+    #                    "",
+    #                    getPartitionByMap(dss_function['partnerFunction']['required_input'][0]), getOrderByMap(dss_function['partnerFunction']['required_input'][0]),
+    #                    fullUsingClausePartner,
+    #                    getAdditionClauses(dss_function['partnerFunction']))
+    # else:
+    #     return SELECT_QUERY.format(dss_function.get('select_clause', '*'),
+    #                    getFunctionName(config, dss_function),                       
+    #                    getOnClause(dss_function, jsonfile, inputTables),
+    #                    fullUsingClause,
+    #                    getAdditionClauses(dss_function))
     return SELECT_QUERY.format(dss_function.get('select_clause', '*'),
-                       getFunctionName(config, dss_function, useCoprocessor),                       
-                       getOnClause(dss_function, jsonfile, inputTables),
+                       getFunctionName(config, dss_function),                       
+                       getOnClause(dss_function, json_file, inputTables),
                        fullUsingClause,
                        getAdditionClauses(dss_function))
     

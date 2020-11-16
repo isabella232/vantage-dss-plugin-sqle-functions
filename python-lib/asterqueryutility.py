@@ -16,20 +16,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 '''
 
 try:
-    from sets import Set
+    from sets import Set # Support for Python 2.7 and below.
 except ImportError:
-    Set = set
+    Set = set # Support for Python 3 above.
 import json
 
 from asterargumentfactory import *
 
 def areStringsEqual(a, b):
+    """
+    Returns if two strings are the same, disregarding cases.
+    """
     return a.upper() == b.upper()
 
 def isStringInList(astring, blist):
+    """
+    Returns if `astring` is in `blist` regardless of cases.
+    """
     return astring.upper() in [y.upper() for y in blist]
 
 def isArgumentDictionaryEntry(argument, x):
+    """
+    Checks if `argument` is in `x`'s list of alternateNames or is `x`'s name.
+    """
     argumentname = argument.get('name', '')
     entryname = x.get('name', '')
     blist = x.get('alternateNames', [])
@@ -62,27 +71,22 @@ def getArgumentClausesFromJson(f):
 def getOutputTableClausesFromJson(f):
     return f.get('output_tables',[])
 
+
 try:
     from dataiku.customrecipe import *
-    def getJson(function_name, useCoprocessor):
-        try:
-            if useCoprocessor:
-                return json.loads(open('%s/data/%s' % (get_recipe_resource(),
-                                               function_name + '_mle.json')).read())
-            else: 
-                return json.loads(open('%s/data/%s' % (get_recipe_resource(),
-                                               function_name + '.json')).read())
-        except:
-            return ''
-
-except ImportError:
-    def getJson(function_name, useCoprocessor):
-        try:
-            if useCoprocessor:
-                return json.loads(open('%s/data/%s' % (get_recipe_resource(),
-                                               function_name + '_mle.json')).read())
-            else: 
-                return json.loads(open('%s/data/%s' % (get_recipe_resource(),
-                                               function_name + '.json')).read())
-        except:
-            return {}
+    DEFAULT_RETURN = ""
+except:
+    DEFAULT_RETURN = {}
+def getJson(function_name):
+    """
+    Returns the contents of the JSON file with the given file name.
+    
+    If the file cannot be loaded, returns an empty string with `dataiku.customrecipe` loaded else returns an empty dictionary.
+    """
+    ret = DEFAULT_RETURN
+    try:
+        with open("%s/data/%s" % (get_recipe_resource(), function_name +".json")) as json_file: # Removed coprocessor.
+            ret = json.load(json_file)
+        return ret
+    except:
+        return ret

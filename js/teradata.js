@@ -162,13 +162,15 @@
        * Gets the static JSON metadata of the given function.
        */
       getFunctionMetadata: function (selectedFunction, shouldSetDefaults) {
+        console.log("Getting function metadata.")
 
         if (typeof selectedFunction === 'undefined') {
           return;
         }
         // console.log(${tbl:datasetname});
         const promise = $http
-          .get(`${FUNCTION_METADATA_PATH}${selectedFunction}_mle.json`, {
+          // .get(`${FUNCTION_METADATA_PATH}${selectedFunction}_mle.json`, {
+          .get(`${FUNCTION_METADATA_PATH}${selectedFunction}.json`, {
             transformResponse: [function (data) {
               if (typeof data === 'string') {                
                 // strip json vulnerability protection prefix
@@ -189,6 +191,7 @@
                 //   return value == NaN ? "NaN" : value;
                 // });
               }
+              console.log(data)
               return data;
             }]
           })
@@ -237,7 +240,6 @@
        * Gets the function description from the static JSON metadata.
        */
       getFunctionDescription: function () {
-
         return (functionMetadata && KEYS.LONG_DESCRIPTION in functionMetadata) ?
           functionMetadata.long_description :
           '';
@@ -445,20 +447,7 @@ removeOrderByColumn_WITHDIR: function(orderArray, orderDirArray, index) {
       // console.log($scope.config.function.useCoprocessor)
       // console.log(inNative)
       // if()
-      if (!$scope.config.function.useCoprocessor){
-        // console.log('Native')
-        if(inNative){ 
-          // console.log('IN Native')
-          return true;
-        } else {
-          // console.log('NOT IN Native')
-          
-          return false;
-        }
-      } else {
-        // console.log('Coprocessor')
-        return true;
-      }
+      return true;
 
     },
 
