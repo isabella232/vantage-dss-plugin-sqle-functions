@@ -77,13 +77,10 @@ def getMultipleUnaliasedInputsClause(dss_function, inputTables):
     
 def getArgumentClauses(dss_function, jsonfile, inputTables):
     if dss_function.get('arguments', []) != []:
-        #print('Has arguments')
-        print(dss_function.get('arguments'))
         return '\n' + queryutility.getJoinedArgumentsString(dss_function.get('arguments', []),
                                                  queryutility.getArgumentClausesFromJson(jsonfile),
                                                  inputTables)
     else:
-        #print('No arguments')
         return ''
     
 

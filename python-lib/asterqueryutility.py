@@ -15,10 +15,6 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
-try:
-    from sets import Set # Support for Python 2.7 and below.
-except ImportError:
-    Set = set # Support for Python 3 above.
 import json
 
 from asterargumentfactory import *

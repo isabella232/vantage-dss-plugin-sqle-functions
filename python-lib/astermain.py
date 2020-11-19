@@ -15,103 +15,89 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
+# Pretty-printing of Dictionaries.
+import pprint
+
 import dataiku
 from dataiku.customrecipe import *
 from dataiku import Dataset
-import pandas as pd, numpy as np
-from dataiku import pandasutils as pdu
 # Import the class that allows us to execute SQL on the Studio connections
 from dataiku.core.sql import SQLExecutor2
+
 # Import plugin libs
 from querybuilderfacade import *
 from inputtableinfo import *
 from outputtableinfo import *
 from outputtableinfo import *
 
-try:
-    from sets import Set # Support for Python 2.7 and below.
-except ImportError:
-    Set = set # Support for Python 3 and above.
-
-# def getConnectionDetails(inputDataset):
-#     return getConnectionParamsFromDataset(input_A_datasets[0]);
 
 def asterDo():
+    """
+    Takes the parameters set by the user from the UI, creates the query, and then executes it.
+    """
+    # Debug options.
+    sep = "="
+    sep_length = 80
+    
     # Recipe inputs
     main_input_name = get_input_names_for_role('main')[0]
-    input_dataset = dataiku.Dataset(main_input_name)    
-
-    # print('Connection info:')
-    # print(input_dataset.get_location_info(sensitive_info=True)['info'])
-    properties = input_dataset.get_location_info(sensitive_info=True)['info'].get('connectionParams').get('properties')
-    autocommit = input_dataset.get_location_info(sensitive_info=True)['info'].get('connectionParams').get('autocommitMode')
-    
-    requiresTransactions = True
-     
-    print('I am assuming in TERA MODE by default')
-    if autocommit:
-        print('I am assuming autocommmit TERA mode')
-        requiresTransactions = False
-        tmode = 'TERA'
-        stTxn = ';'
-        edTxn = ';'
-    else:
-        #Detected TERA
-        print('I am assuming non-autocommit TERA MODE')
-        tmode = 'TERA'
-        stTxn = 'BEGIN TRANSACTION;'
-        edTxn = 'END TRANSACTION;'
-
-    for prop in properties:
-        if prop['name'] == 'TMODE' and prop['value'] == 'TERA':
-            if autocommit:
-                print('I am in autocommmit TERA mode')
-                requiresTransactions = False
-                tmode = 'TERA'
-                stTxn = ';'
-                edTxn = ';'
-            else:
-                #Detected TERA
-                print('I am in TERA MODE')
-                tmode = 'TERA'
-                stTxn = 'BEGIN TRANSACTION;'
-                edTxn = 'END TRANSACTION;'
-        elif prop['name'] == 'TMODE' and prop['value'] == 'ANSI':
-            #Detected ANSI
-            print('I am in ANSI MODE')
-            tmode = 'ANSI'
-            stTxn = ';'
-            edTxn = 'COMMIT WORK;'
-    print(properties)
-    
-
+    input_dataset = dataiku.Dataset(main_input_name)
 
     # Recipe outputs
     main_output_name = get_output_names_for_role('main')[0]
     output_dataset =  dataiku.Dataset(main_output_name)
     
-    # Recipe function param
-    dss_function = get_recipe_config().get('function', None)
-    print ("\n=================================\n")
-    print ('Showing DSS Function')
-    print (dss_function)
-    print ("\n=================================\n")
-    
     # Daitaiku DSS params
     client = dataiku.api_client()
     projectkey = main_input_name.split('.')[0]
     project = client.get_project(projectkey)
+    
+    # Connection properties.
+    # TODO: Handle Input and Output Table connection properties.
+    properties = input_dataset.get_location_info(sensitive_info=True)['info'].get('connectionParams').get('properties')
+    autocommit = input_dataset.get_location_info(sensitive_info=True)['info'].get('connectionParams').get('autocommitMode')
+    
+    # SQL Executor.
+    executor = SQLExecutor2(dataset=input_dataset)   
+    
+    # Handle pre- and post-query additions.
+    # Assume autocommit TERA mode by default.
+    pre_query = None
+    post_query = None
+    
+    print(sep*sep_length)
+    if not autocommit:
+        print("NOT AUTOCOMMIT MODE.")
+        print("Assuming TERA mode.")
+        pre_query = ["BEGIN TRANSACTION;"]
+        post_query = ["END TRANSACTION;"]
+        for prop in properties:
+            if prop['name'] == 'TMODE':
+                if prop['value'] == 'ANSI':
+                    print("ANSI mode.")
+                    pre_query = [";"]
+                    post_query = ["COMMIT WORK;"]
+    
+    else:
+        print("AUTOCOMMIT MODE.")
+        print("No pre- and post-query.")
+    print (sep*sep_length)
 
+    # Recipe function param
+    dss_function = get_recipe_config().get('function', None)
+    pp = pprint.PrettyPrinter(indent=4)
+    print(sep*sep_length)
+    print('DSS Function:')
+    pp.pprint(dss_function)
+    print(sep*sep_length)
+
+    # output dataset
     try:
-        # output dataset
         outputTable = outputtableinfo(output_dataset.get_location_info()['info'], main_output_name,
                                   get_recipe_config() or {})
     except Exception as error:
         raise RuntimeError("""Error obtaining connection settings for output table."""                           
                            """ This plugin only supports Teradata tables.""")
-        # raise RuntimeError("""Error obtaining connection settings for output table."""
-        #                    """ Make sure connection setting is set to 'Read a database table'."""
-        #                    """ This plugin only supports Aster tables.""")
 
     # input datasets
     try:
@@ -124,40 +110,41 @@ def asterDo():
     except Exception as error:
         raise RuntimeError("""Error obtaining connection settings from one of the input tables."""                           
                            """ This plugin only supports Teradata tables.""")
-        
-    # actual query
-    query = getFunctionsQuery(dss_function, inputTables, outputTable, get_recipe_config() or {})
-    # print("=============================")
-    # print (query)
-    # print("=============================")
-    # raise RuntimeError("""I Just wanted to make this execution stop: """)
-    
-    # Uncomment below
-    executor = SQLExecutor2(dataset=input_dataset)   
-    
-   
 
     if dss_function.get('dropIfExists', False):
-
-        # 
-        dropTableStr = dropTableStatement(outputTable)
+        print("Preparing to drop tables.")
+        drop_query = dropTableStatement(outputTable)
+        
+        print(sep*sep_length)
+        print("DROP query:")
+        print(drop_query)
+        print(sep*sep_length)
+        
         # executor.query_to_df(dropTableStr)
-        if requiresTransactions:
-            print('Start transaction for drop')
-            print(stTxn)
-            executor.query_to_df(stTxn)
+        # if not autocommit:
+        #     print('Start transaction for drop')
+        #     print(stTxn)
+        #     executor.query_to_df(stTxn)
 
-            print('End transaction for drop')
-            print(edTxn)
-            executor.query_to_df(edTxn,[dropTableStr])
-        else:
-            executor.query_to_df([dropTableStr])
+        #     print('End transaction for drop')
+        #     print(edTxn)
+        #     executor.query_to_df(edTxn,[dropTableStr])
+        # else:
+        #     executor.query_to_df([dropTableStr])
+        
+    
+        if not autocommit:
+            executor.query_to_df(pre_query)
+        executor.query_to_df(drop_query, post_query)
 
         #Start transaction
         #Move to drop query and make each DROP run separately
-        dropAllQuery = getDropOutputTableArgumentsStatements(dss_function.get('output_tables', []))
+        drop_all_query = getDropOutputTableArgumentsStatements(dss_function.get('output_tables', []))
+        
+        print(sep*sep_length)
         print('Drop ALL Query:')
-        print(dropAllQuery)        
+        print(drop_all_query)
+        print(sep*sep_length)
         
         # if requiresTransactions:
             # print('Start transaction for drop')
@@ -165,54 +152,43 @@ def asterDo():
             # executor.query_to_df(stTxn)
         # dropAllQuery = getDropOutputTableArgumentsStatements(dss_function.get('arguments', []))
         
-        #Change dropAllQuery to string/s? or execute one drop per item in list.            
-        if requiresTransactions:
-            for dropTblStmt in dropAllQuery:
-                print('Start transaction for drop')
-                print(stTxn)
-                executor.query_to_df(stTxn)
+        #Change dropAllQuery to string/s? or execute one drop per item in list.       
+        for drop_q in drop_all_query:
+        #     print('Start transaction for drop')
+        #     print(stTxn)
+        #     executor.query_to_df(stTxn)
 
-                print('End transaction for drop')
-                print(edTxn)
-                executor.query_to_df(edTxn,[dropTblStmt])
-            # executor.query_to_df(edTxn)
-        else:
-            for dropTblStmt in dropAllQuery:
-                executor.query_to_df([dropTblStmt])
+        #     print('End transaction for drop')
+        #     print(edTxn)
+        #     executor.query_to_df(edTxn,[dropTblStmt])
+            if not autocommit:
+                executor.query_to_df(pre_query)
+            executor.query_to_df(drop_q, post_query)
+        # else:
+        #     for dropTblStmt in dropAllQuery:
+        #         executor.query_to_df([dropTblStmt])
     # executor.query_to_df("END TRANSACTION;", pre_queries=query)
-    
-    # write table schema ACTUAL COMMENT
-    # nQuery = '''SELECT * FROM {} LIMIT (1);'''.format(outputTable.tablename)
-    # selectResult = executor.query_to_df(nQuery);
-    # output_schema = []
-    # for column in selectResult.columns:
-    #     output_schema.append({"name":column, "type":"string"})
-    # output_dataset.write_schema(output_schema)
-    print('\n'.join(query))
-    # print(dss_function)
 
-    # recipe_output_table = dss_function.get('recipeOutputTable', "")
-    # print('recipe_output_table before IF')
-    # print(recipe_output_table)
-    if requiresTransactions:
-        print('Start transaction for create table')
-        print(stTxn)
-        executor.query_to_df(stTxn)
-
-    
-    
+    # actual query
+    create_query = getFunctionsQuery(dss_function, inputTables, outputTable, get_recipe_config() or {})
+    print(sep*sep_length)
+    print("CREATE query:")
+    print(query)
+    print(sep*sep_length)
     # Detect error
     try:
-        selectResult = executor.query_to_df(query)
+        if not autocommit:
+            executor.query_to_df(pre_query)
+        executor.query_to_df(create_query, post_query)
+        # selectResult = executor.query_to_df(query, pre_queries=pre_query, post_queries=post_query)
     except Exception as error:
-
         err_str = str(error)
         err_str_list = err_str.split(" ")
         # trying to shorten the error for the modal in front-end
         if len(err_str_list) > 15:
-            print ("\n=================================\n")
+            print(sep*sep_length)
             print (error)
-            print ("\n=================================\n")
+            print(sep*sep_length)
             new_err_str = err_str_list[:15]
             new_err_str.append("\n\n")
             new_err_str.append("...")
@@ -221,26 +197,24 @@ def asterDo():
         else:
             raise RuntimeError(err_str)
 
-    if requiresTransactions:
-        print('End transaction for create table')
-        print(edTxn)
-        executor.query_to_df(edTxn)
-
     
     print('Moving results to output...')
 
-    if requiresTransactions:
-        print('Start transaction for schema building')
-        print(stTxn)
-        executor.query_to_df(stTxn)
+    # if not autocommit:
+    #     print('Start transaction for schema building')
+    #     print(stTxn)
+    #     executor.query_to_df(stTxn)
 
     # pythonrecipe_out = output_dataset
     # pythonrecipe_out.write_with_schema(selectResult)
-    customOutputTableSQL = 'SELECT * from '+ outputTable.tablename + ' SAMPLE 0'
-    selRes = executor.query_to_df(customOutputTableSQL)
+    select_sample_query = 'SELECT * from '+ outputTable.tablename + ' SAMPLE 0'
+    if not autocommit:
+        executor.query_to_df(pre_query)
+    sel_res = executor.query_to_df(select_sample_query, post_query)
+    # selRes = executor.query_to_df(customOutputTableSQL, pre_queries=pre_query, post_queries=post_query)
 
     pythonrecipe_out = output_dataset
-    pythonrecipe_out.write_schema_from_dataframe(selRes)
+    pythonrecipe_out.write_schema_from_dataframe(sel_res)
 
     # Additional Tables
     outtables = dss_function.get('output_tables', [])
@@ -276,14 +250,17 @@ def asterDo():
                 print('Working on table number:')
                 print(tableCounter)
                 print(customOutputTableSQL)
-                selRes = executor.query_to_df(customOutputTableSQL)
+                if not autocommit:
+                    executor.query_to_df(pre_query)
+                sel_res = executor.query_to_df(customOutputTableSQL, post_query)
+                # selRes = executor.query_to_df(customOutputTableSQL, pre_queries=pre_query, post_queries=post_query)
                 tableCounter += 1
                 pythonrecipe_out2 = output_dataset2
                 pythonrecipe_out2.write_schema_from_dataframe(selRes)
-    if requiresTransactions:
-        print('End transaction for schema building')
-        print(edTxn)
-        executor.query_to_df(edTxn)
+    # if not autocommit:
+    #     print('End transaction for schema building')
+    #     print(edTxn)
+    #     executor.query_to_df(edTxn)
     print('Complete!')  
 
 

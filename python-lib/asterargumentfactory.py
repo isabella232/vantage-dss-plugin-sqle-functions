@@ -46,6 +46,7 @@ class AsterArgumentFactory(object):
             argument['value'] = filter(None, argument.get('value'))
             return ListArgument(argument, argumentDef)
         # TODO: Better handling of nPath or other clauses like this. 
+        # These arguments are handled differently, they require no quotation marks surrounding them. 
         elif name == "Symbols" or name == "Result" or name == "Mode": 
             return SqlExprArgument(argument, argumentDef)
         else:

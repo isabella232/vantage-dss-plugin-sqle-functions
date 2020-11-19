@@ -31,7 +31,7 @@ WITH DATA
 
 # Update to:
 SELECT_QUERY = '''SELECT {}
-FROM   {}
+FROM {}
 (
 {}
 {}
@@ -39,7 +39,7 @@ FROM   {}
 {}'''
 
 MR_SELECT_QUERY = '''SELECT {}
-FROM   {}
+FROM {}
 (
 {} {}
 {} {}

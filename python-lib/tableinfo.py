@@ -27,7 +27,6 @@ class tableinfo(object):
             print('Defaulting to user\'s default database')
             return self._tablename
         else:
-            print('Defaulting to user\'s default database')
             return ".".join(['"{}"'.format(self._schemaname),
                         '"{}"'.format(self._tablename)])
     
