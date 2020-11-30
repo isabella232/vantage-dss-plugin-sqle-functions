@@ -15,13 +15,13 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
+
 # Pretty-printing of Dictionaries.
 import pprint
 
 import dataiku
-from dataiku.customrecipe import *
 from dataiku import Dataset
-# Import the class that allows us to execute SQL on the Studio connections
+from dataiku.customrecipe import *
 from dataiku.core.sql import SQLExecutor2
 
 # Import plugin libs
@@ -35,9 +35,9 @@ def asterDo():
     """
     Takes the parameters set by the user from the UI, creates the query, and then executes it.
     """
-    # Debug options.
-    sep = "="
-    sep_length = 80
+    # Formatting options.
+    SEP_LENGTH = 80
+    SEP = "=" * SEP_LENGTH
     
     # Recipe inputs
     main_input_name = get_input_names_for_role('main')[0]
@@ -65,7 +65,7 @@ def asterDo():
     pre_query = None
     post_query = None
     
-    print(sep*sep_length)
+    print(SEP)
     if not autocommit:
         print("NOT AUTOCOMMIT MODE.")
         print("Assuming TERA mode.")
@@ -81,15 +81,16 @@ def asterDo():
     else:
         print("AUTOCOMMIT MODE.")
         print("No pre- and post-query.")
-    print (sep*sep_length)
+    print (SEP)
 
     # Recipe function param
     dss_function = get_recipe_config().get('function', None)
     pp = pprint.PrettyPrinter(indent=4)
-    print(sep*sep_length)
+
+    print(SEP)
     print('DSS Function:')
     pp.pprint(dss_function)
-    print(sep*sep_length)
+    print(SEP)
 
     # output dataset
     try:
@@ -111,84 +112,60 @@ def asterDo():
         raise RuntimeError("""Error obtaining connection settings from one of the input tables."""                           
                            """ This plugin only supports Teradata tables.""")
 
+    # Handle dropping of output tables.
     if dss_function.get('dropIfExists', False):
         print("Preparing to drop tables.")
         drop_query = dropTableStatement(outputTable)
         
-        print(sep*sep_length)
+        print(SEP)
         print("DROP query:")
         print(drop_query)
-        print(sep*sep_length)
+        print(SEP)
+        try:
+            # dataiku's query_to_df's pre_query parameter seems to not work. This is a work-around to ensure that the 
+            # "START TRANSACTION;" block applies for non-autocommit TERA mode connections.
+            if not autocommit: 
+                executor.query_to_df(pre_query)
+            executor.query_to_df(drop_query, post_queries=post_query)
+        except Exception as e:
+            print(e)
         
-        # executor.query_to_df(dropTableStr)
-        # if not autocommit:
-        #     print('Start transaction for drop')
-        #     print(stTxn)
-        #     executor.query_to_df(stTxn)
-
-        #     print('End transaction for drop')
-        #     print(edTxn)
-        #     executor.query_to_df(edTxn,[dropTableStr])
-        # else:
-        #     executor.query_to_df([dropTableStr])
-        
-    
-        if not autocommit:
-            executor.query_to_df(pre_query)
-        executor.query_to_df(drop_query, post_query)
-
-        #Start transaction
-        #Move to drop query and make each DROP run separately
+        # Drop other output tables if they exist.
         drop_all_query = getDropOutputTableArgumentsStatements(dss_function.get('output_tables', []))
         
-        print(sep*sep_length)
+        print(SEP)
         print('Drop ALL Query:')
         print(drop_all_query)
-        print(sep*sep_length)
-        
-        # if requiresTransactions:
-            # print('Start transaction for drop')
-            # print(stTxn)
-            # executor.query_to_df(stTxn)
-        # dropAllQuery = getDropOutputTableArgumentsStatements(dss_function.get('arguments', []))
-        
-        #Change dropAllQuery to string/s? or execute one drop per item in list.       
+        print(SEP)
+           
         for drop_q in drop_all_query:
-        #     print('Start transaction for drop')
-        #     print(stTxn)
-        #     executor.query_to_df(stTxn)
-
-        #     print('End transaction for drop')
-        #     print(edTxn)
-        #     executor.query_to_df(edTxn,[dropTblStmt])
+            # dataiku's query_to_df's pre_query parameter seems to not work. This is a work-around to ensure that the 
+            # "START TRANSACTION;" block applies for non-autocommit TERA mode connections.
             if not autocommit:
                 executor.query_to_df(pre_query)
-            executor.query_to_df(drop_q, post_query)
-        # else:
-        #     for dropTblStmt in dropAllQuery:
-        #         executor.query_to_df([dropTblStmt])
-    # executor.query_to_df("END TRANSACTION;", pre_queries=query)
+            executor.query_to_df(drop_q, post_queries=post_query)
 
-    # actual query
+    # CREATE query.
     create_query = getFunctionsQuery(dss_function, inputTables, outputTable, get_recipe_config() or {})
-    print(sep*sep_length)
+    print(SEP)
     print("CREATE query:")
-    print(query)
-    print(sep*sep_length)
+    print(create_query)
+    print(SEP)
     # Detect error
     try:
+        # dataiku's query_to_df's pre_query parameter seems to not work. This is a work-around to ensure that the 
+        # "START TRANSACTION;" block applies for non-autocommit TERA mode connections.
         if not autocommit:
             executor.query_to_df(pre_query)
-        executor.query_to_df(create_query, post_query)
-        # selectResult = executor.query_to_df(query, pre_queries=pre_query, post_queries=post_query)
+        executor.query_to_df(create_query, post_queries=post_query)
     except Exception as error:
         err_str = str(error)
         err_str_list = err_str.split(" ")
         # trying to shorten the error for the modal in front-end
         if len(err_str_list) > 15:
-            print(sep*sep_length)
+            print(SEP)
             print (error)
-            print(sep*sep_length)
+            print(SEP)
             new_err_str = err_str_list[:15]
             new_err_str.append("\n\n")
             new_err_str.append("...")
@@ -199,19 +176,13 @@ def asterDo():
 
     
     print('Moving results to output...')
-
-    # if not autocommit:
-    #     print('Start transaction for schema building')
-    #     print(stTxn)
-    #     executor.query_to_df(stTxn)
-
-    # pythonrecipe_out = output_dataset
-    # pythonrecipe_out.write_with_schema(selectResult)
+    
     select_sample_query = 'SELECT * from '+ outputTable.tablename + ' SAMPLE 0'
+    # dataiku's query_to_df's pre_query parameter seems to not work. This is a work-around to ensure that the 
+    # "START TRANSACTION;" block applies for non-autocommit TERA mode connections.
     if not autocommit:
         executor.query_to_df(pre_query)
-    sel_res = executor.query_to_df(select_sample_query, post_query)
-    # selRes = executor.query_to_df(customOutputTableSQL, pre_queries=pre_query, post_queries=post_query)
+    sel_res = executor.query_to_df(select_sample_query, post_queries=post_query)
 
     pythonrecipe_out = output_dataset
     pythonrecipe_out.write_schema_from_dataframe(sel_res)
@@ -250,17 +221,15 @@ def asterDo():
                 print('Working on table number:')
                 print(tableCounter)
                 print(customOutputTableSQL)
+                # dataiku's query_to_df's pre_query parameter seems to not work. This is a work-around to ensure that the 
+                # "START TRANSACTION;" block applies for non-autocommit TERA mode connections.
                 if not autocommit:
                     executor.query_to_df(pre_query)
-                sel_res = executor.query_to_df(customOutputTableSQL, post_query)
+                sel_res = executor.query_to_df(customOutputTableSQL, post_queries=post_query)
                 # selRes = executor.query_to_df(customOutputTableSQL, pre_queries=pre_query, post_queries=post_query)
                 tableCounter += 1
                 pythonrecipe_out2 = output_dataset2
                 pythonrecipe_out2.write_schema_from_dataframe(selRes)
-    # if not autocommit:
-    #     print('End transaction for schema building')
-    #     print(edTxn)
-    #     executor.query_to_df(edTxn)
     print('Complete!')  
 
 

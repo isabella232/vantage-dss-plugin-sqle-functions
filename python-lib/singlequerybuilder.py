@@ -15,11 +15,6 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
-from _ast import If
-try:
-    from sets import Set
-except ImportError:
-    Set = set
 import asterqueryutility as queryutility
 from pseudoconstantgetters import *
 
