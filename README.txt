@@ -22,9 +22,9 @@ I. System Requirements
 
 The following component versions are required for the Teradata Vantage Plugin: 
 
-1. Dataiku Data Science Studio version 8.1
+1. Dataiku Data Science Studio version 8.0.2
 2. Teradata Vantage 2.0
-3. Teradata JDBC Driver 16.20
+3. Teradata JDBC Driver 16.20 (minimum), Teradata JDBC Driver 17.00 (recommended)
 
 For R and Python support in Teradata Vantage, one or both of the following are required:
 
