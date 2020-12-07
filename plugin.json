@@ -2,18 +2,18 @@
 {
     // The identifier of the plugin.
     // This must be globally unique, and only contain A-Za-z0-9_-
-    "id" : "TeradataVantageAnalyticFunctionsPlugin",
+    "id" : "TeradataVantageSQLEFunctionsPlugin",
 
     // Version. It is highly recommended to use Semantic Versioning
-    "version" :"1.1-1",
+    "version" :"2.0-1",
 
 
     // Meta data for display purposes
     "meta" : {
         // Name of this plugin that appears in the interface.
-        "label" : "Teradata Vantage Analytic Functions Plugin",
+        "label" : "Teradata Vantage SQL Engine Functions Plugin",
 
-        "description" : "Plugin to execute Teradata Vantage Analytic functions from DSS.",
+        "description" : "Plugin to execute Teradata Vantage SQL Engine functions from DSS.",
         "author" : "Teradata",
 
         // The icon of a plugin must be one of the FontAwesome 3.1 icons
