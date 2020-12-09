@@ -15,7 +15,7 @@ for a majority of the Advanced SQL Engine analytics functions in 16.20.
 Note that Dataiku DSS itself also supports ANSI SQL push-down for most of their 
 data preprocessing Visual recipes.  
 
-The Plugins were tested with Vantage 1.1 Release Candidate 9.
+The Plugins were tested with Vantage 2.0.
 
 I. System Requirements
 ----------------------
